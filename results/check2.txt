@@ -1,0 +1,81 @@
+
+def check_alg1_alg2():
+
+    #construct para
+    cut_off = 8
+    Omega_R = 2*np.pi*30*MHz
+    ini_state= (qutip.tensor(qutip.fock_dm(2,0),qutip.fock_dm(2,0)))    # init condition
+    phonon_ini = (qutip.fock_dm(cut_off,0)) # init of phonon
+    amplitude = {0:lambda t: Omega_R,1:lambda t: Omega_R}
+    para = trap_config.trap_para(ion_number = 3, laser_ion_list = [0,1],omega_ax = 0.32*2*np.pi*MHz,omega_ra = 2.18*2*np.pi*MHz, cut_off = cut_off,heating_rate = 1e0,t_tol = None,lamb_dicke = 0.1,_ini_state=ini_state,_phonon_ini=phonon_ini,basis = 'Gellman',amplitude = amplitude, detuning = 20*kHz,lind_type = [],if_testXX=True)
+
+
+
+    #simulation with 5 different methods
+    
+    t1 = time.time()
+    
+    ideal = sim_method_2L.ideal(para).sim()
+    t2 = time.time()
+    print('ideal:','time =',t2-t1,'\n',ideal)
+
+    #brute = sim_method_2L.brute(para).sim()
+    #t3 = time.time()
+    #print('brute:','time =',t3-t2,'\n',brute)
+    
+    alg1 = sim_method_2L.alg1(para).sim()
+    t4 = time.time()
+    print('alg1:','time =',t4-t2,'\n',alg1)
+    
+    alg2_noLind = sim_method_2L.alg2_noLind(para).sim()
+    t5 = time.time()
+    print('alg2_noLind:','time =',t5-t4,'\n',alg2_noLind)
+    
+    alg2 = sim_method_2L.alg2(para).sim()
+    t6 = time.time()
+    print('alg2:','time =',t6-t5,'\n',alg2)
+
+    print('cut_off =',cut_off,'total time = ',t6-t1)
+
+    #results
+
+
+
+(base) hewenhao@hewenhaos-MacBook-Pro alg1_alg2 % python3 main.py
+initialize: 3 ions
+phonon frequency: [2010619.29829747 3490539.81567891 4856094.9068006 ]
+root of Theta = pi/4: 4.490428385903473 us; error:Delta Theta = 4.440892098500626e-16
+alpha0,1: [(0.4685797735788487-0.08405740817409355j), (-0.3430273029778139-0.03203590729397484j), (0.1408944336203753-0.013256404920206607j)] [(0.46857977357884867-0.08405740817409353j), (3.029556823453081e-17+2.8293550016410504e-18j), (-0.28178886724075075+0.02651280984041323j)]
+ideal: time = 0.030862092971801758 
+ [[0.5+0.j  0. +0.j  0. +0.j  0. -0.5j]
+ [0. +0.j  0. +0.j  0. +0.j  0. +0.j ]
+ [0. +0.j  0. +0.j  0. +0.j  0. +0.j ]
+ [0. +0.5j 0. +0.j  0. +0.j  0.5+0.j ]]
+alg1: time = 33.55004096031189 
+ [[ 0.33420083+1.51239198e-18j  0.        +0.00000000e+00j
+   0.        +0.00000000e+00j -0.05329498-2.55756512e-01j]
+ [ 0.        +0.00000000e+00j  0.16580015-1.63325754e-17j
+   0.05329498+1.49735249e-02j  0.        +0.00000000e+00j]
+ [ 0.        +0.00000000e+00j  0.05329498-1.49735249e-02j
+   0.16580091+2.13500193e-17j  0.        +0.00000000e+00j]
+ [-0.05329498+2.55756512e-01j  0.        +0.00000000e+00j
+   0.        +0.00000000e+00j  0.33419812-7.41416676e-18j]]
+alg2_noLind: time = 0.07735204696655273 
+ [[ 0.3341983 -2.08790541e-18j  0.        +0.00000000e+00j
+   0.        +0.00000000e+00j -0.05329667-2.55757738e-01j]
+ [ 0.        +0.00000000e+00j  0.1658017 +4.46467113e-18j
+   0.05329667+1.49736128e-02j  0.        +0.00000000e+00j]
+ [ 0.        +0.00000000e+00j  0.05329667-1.49736128e-02j
+   0.1658017 +8.57675775e-19j  0.        +0.00000000e+00j]
+ [-0.05329667+2.55757738e-01j  0.        +0.00000000e+00j
+   0.        +0.00000000e+00j  0.3341983 -1.30512510e-18j]]
+alg2: time = 92.02581286430359 
+ [[ 0.3341983 +0.j          0.        +0.j          0.        +0.j
+  -0.05329667-0.25575774j]
+ [ 0.        +0.j          0.1658017 +0.j          0.05329667+0.01497361j
+   0.        +0.j        ]
+ [ 0.        +0.j          0.05329667-0.01497361j  0.1658017 +0.j
+   0.        +0.j        ]
+ [-0.05329667+0.25575774j  0.        +0.j          0.        +0.j
+   0.3341983 +0.j        ]]
+cut_off = 8 total time =  125.68406796455383

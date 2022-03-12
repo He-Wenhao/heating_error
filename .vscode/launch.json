@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+
+
+
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [],
+            "justMycode":false,
+        },
+        {
+            "name": "not only my code Python: Current File",
+            "type": "python",
+            "request": "test",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": ["-W","error"],
+            "justMycode":false,
+        },
+        {
+            "type": "node-terminal",
+            "name": "JavaScript Debug Terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+        }
+    ]
+}
