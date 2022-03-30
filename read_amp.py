@@ -4,7 +4,7 @@ from my_constants import *
 import sympy as sp
 import matplotlib.pyplot as plt
 
-df = pd.read_csv('./results/amp_opt_28.csv',sep = ';',skipinitialspace=True)
+df = pd.read_csv('./results/j01/amp_opt_28.csv',sep = ';',skipinitialspace=True)
 tau_l = df['tau']
 segNum_l = df['segNum']
 amp_l = [eval(i) for i in df['amp']]

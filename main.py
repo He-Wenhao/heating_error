@@ -452,7 +452,7 @@ def compute_my_bound():
 
         return para
 
-    for N_ions in range(2,13):
+    for N_ions in range(3,13):
         para = p(N_ions,['aH','a'])
         for j in para.j_ions:
             
