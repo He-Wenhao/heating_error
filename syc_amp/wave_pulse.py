@@ -1,10 +1,15 @@
 #   读取 AM——modulation 的 package
 import numpy as np
+import matplotlib.pyplot as plt
 
 from .pakages.quantum_dynamics_simulation.AM_optimization import *
 from .pakages.quantum_dynamics_simulation.segmented_simulation import *
 from .pakages.quantum_dynamics_simulation.visualization import *
 import time
+import scipy.integrate as integrate
+
+us = 1e-6
+MHz = 1e6
 
 #   1. 设计的波形的参数；    2. 波形导入做时间演化；   3. 计算演化的保真度和cost function的比较；   4. 对噪声的抗性；
 
@@ -12,17 +17,17 @@ class syc_amp(object):
 
 
 
-    def __init__(self,ion_number,j_list,omega,bij,detuning,tau,segment_num,lamb_dicke):
+    def __init__(self,ion_number,j_list,omega,bij,tau,segment_num,lamb_dicke,mu):
         ##      针对两离子，AM 波形设计优化程序 ，收集分段过程中的Rabi强度
-        self.mu = detuning
         self.j_list = np.array(j_list)
-        self.detuning_list  = np.array([x-detuning for x in omega])
+        self.detuning_list  = omega
         self.N_ions = ion_number
         self.gate_duration = tau
         self.segments_number = segment_num
         self.mode_pattern = np.array(bij)
         self.bare_eta = lamb_dicke
         self.eta = self.bare_eta * self.mode_pattern
+        self.mu = mu
 
         self.theta = np.array([[0.]*self.N_ions]*self.N_ions)
         j0 = j_list[0]
@@ -41,7 +46,9 @@ class syc_amp(object):
         #   1. 开始optimization的过程
         op = AM_optimize(self.detuning_list, self.gate_duration, self.segments_number, self.theta, self.eta, pulse_symmetry = pulse_symmetry, ions_same_amps = ions_same_amps)
         op._optimizer_AM()
-
+        self.error = op.hwh_error
+        self.P = op.P
+        self.G = op.G
         #   计算相空间中alpha的值
         steps = 500
         op.trajectory_alpha_calculate(steps)
@@ -52,6 +59,7 @@ class syc_amp(object):
             op.draw_optimize_process()
             #   以下为 相空间轨迹 s的图
             op.trajectory_plot(steps)
+
             #   以下为耦合强度的画图
             op.Jij_plot()
 
@@ -59,7 +67,7 @@ class syc_amp(object):
         op.save_data()
 
         #   4. 打印优化之后的结果
-        op.print_res()
+        #op.print_res()
 
 
     #   通过loading AM 的结果，作图分析
@@ -105,16 +113,43 @@ class syc_amp(object):
         folder_path = "./calculation results/data/"
         self.optimized_X_import = np.load(folder_path + "optimized_X.npy")
 
+    def print_amp(self):
+        delta_t = self.gate_duration/self.segments_number
+        def result_func(t,j):
+            ion_i_amp_list = np.real(self.optimized_X_import[j])
+            ind = min(int(t/delta_t),self.segments_number-1)
+            return ion_i_amp_list[ind]
+        j0 = self.j_list[0]
+        j1 = self.j_list[1]
+        print('segnum',self.segments_number,(np.real(self.optimized_X_import[j0]),np.real(self.optimized_X_import[j1]))) # Omega
+        print('test theta',thetaproduct(self.G, self.optimized_X_import))
+
 
     def get_amp(self):
         delta_t = self.gate_duration/self.segments_number
         def result_func(t,j):
             ion_i_amp_list = np.real(self.optimized_X_import[j])
-            ind = int(t/delta_t)
+            ind = min(int(t/delta_t),self.segments_number-1)
             return ion_i_amp_list[ind]
-        j0 = j_list[0]
-        j1 = j_list[1]
-        return {j0:lambda t:result_func(t,j0)*np.exp(-1.j*self.mu*t) , j1:lambda t:result_func(t,j1)*np.exp(-1.j*self.mu*t)}
+        j0 = self.j_list[0]
+        j1 = self.j_list[1]
+        res = {j0:lambda t: result_func(t/us,j0)*MHz/2  , j1:lambda t:result_func(t/us,j1)*MHz/2}########
+        print('segnum',self.segments_number,(np.real(self.optimized_X_import[j0]),np.real(self.optimized_X_import[j1]))) # Omega
+        #res = {j0:lambda t: result_func(t/us,j0)*MHz  , j1:lambda t:result_func(t/us,j1)*MHz}########
+		#draw f(x) from x = 0 to x = 10 , cut into 1000 steps 
+        '''  
+        x = np.linspace(0, 200*us, 1000)
+        y = [(res[j0](i)) for i in x]
+        plt.plot(x,y)
+        plt.xlabel('x axis')
+        plt.ylabel('y axis')
+        plt.title('Histogram of IQ, greece $\\alpha$')
+        plt.show()
+        '''
+        #print('test integrate:',integrate.quad(lambda t:result_func(t/us,j0)*MHz*np.cos(self.detuning_list[0]*MHz*t),0,self.gate_duration*us,limit = 1000))
+        ###########################
+        #print('test intgrate 2',tf.tensordot(self.P, self.optimized_X_import, [[1], [1]]))
+        return res
 
 
 

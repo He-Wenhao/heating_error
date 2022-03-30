@@ -182,7 +182,8 @@ class trap_para():
             raise ValueError('amplitude numbers not true')
         if self.t_tol == None:
             raise ValueError("not a t_tol")  
-        #self.alpha = self.get_alpha(self.t_tol)
+        self.alpha = self.get_alpha(self.t_tol)
+        #print('alpha:',self.alpha)
         #print('Theta:',self.Theta(self.t_tol))
     def Theta(self,tau):
         amp0 = self.amplitude[self.j_ions[0]]
@@ -192,7 +193,7 @@ class trap_para():
         omega = self.Z_freqcal
         b = self.Z_modes
         result = []
-        result = [eta**2*b[i][k_mode]*b[j][k_mode]*integrate.dblquad(lambda t2,t1: (amp0(t1)*amp1(t2)+amp0(t2)*amp1(t1))*np.sin((t1-t2)*omega[k_mode]) ,0 , tau, 0, lambda x:x)[0] for k_mode in range(self.N_ions)]
+        result = [eta**2*b[i][k_mode]*b[j][k_mode]*integrate.nquad(lambda t1,t2: (amp0(t1)*amp1(t2)+amp0(t2)*amp1(t1))*np.sin((t1-t2)*int(t1>t2)*omega[k_mode]) ,[[0,tau],[0,tau]],opts = [{'limit':2000},{'limit':2000}])[0] for k_mode in range(self.N_ions)]
         return sum(result)
 
     def Theta_draw(self):
@@ -222,11 +223,12 @@ class trap_para():
         amp0 = self.amplitude[self.j_ions[0]]
         amp1 = self.amplitude[self.j_ions[1]]
         for k_mod in range(N):
-            real0 = integrate.quad(lambda t:(amp0(t)*np.exp(1j*omega[k_mod]*t)).real,0,tau)[0] 
-            img0 = integrate.quad(lambda t:(amp0(t)*np.exp(1j*omega[k_mod]*t)).imag,0,tau)[0] 
+            real0 = integrate.quad(lambda t:(amp0(t)*np.exp(1j*omega[k_mod]*t)).real,0,tau,limit = 1000)[0] 
+            img0 = integrate.quad(lambda t:(amp0(t)*np.exp(1j*omega[k_mod]*t)).imag,0,tau,limit = 1000)[0] 
+        
             result0.append(-1.j*b[j0][k_mod]*eta*(real0+1j*img0) )
-            real1 = integrate.quad(lambda t:(amp1(t)*np.exp(1j*omega[k_mod]*t)).real,0,tau)[0] 
-            img1 = integrate.quad(lambda t:(amp1(t)*np.exp(1j*omega[k_mod]*t)).imag,0,tau)[0] 
+            real1 = integrate.quad(lambda t:(amp1(t)*np.exp(1j*omega[k_mod]*t)).real,0,tau,limit = 1000)[0] 
+            img1 = integrate.quad(lambda t:(amp1(t)*np.exp(1j*omega[k_mod]*t)).imag,0,tau,limit = 1000)[0] 
             result1.append(-1.j*b[j1][k_mod]*eta*(real1+1j*img1))
         print('alpha0,1:',result0,result1)
         return result0, result1

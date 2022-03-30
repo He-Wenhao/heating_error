@@ -8,6 +8,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 import time
+import os
 
 # #   来限定只使用 CPU 进行运算。
 # cpus = tf.config.list_physical_devices(device_type='CPU')
@@ -237,11 +238,13 @@ class AM_optimize():
         # #   2. 测试发现，使用SLSQP，对于segment增加，结果依然正确
         # self.optim_results = minimize(self.cost_function_value, self.start, method='SLSQP', bounds=bnds, tol=1e-18)
         #   3. 采用SLSQP的方法，外加 constrain 对 theta 进行约束
-        self.optim_results = minimize( self.cost_function_value, self.start, method='SLSQP', bounds=bnds, constraints= {'type':'eq','fun':self.constrains}, tol=1e-18 )
+        self.optim_results = minimize( self.cost_function_value, self.start, method='SLSQP', bounds=bnds, constraints= {'type':'eq','fun':self.constrains,'ftol':1e-8,'maxiter': 300} )
         # #   4. 寻找 global minimum
         # from scipy.optimize import basinhopping
         # self.optim_results = basinhopping( self.cost_function_value, self.start )
         #   计时结束
+        self.hwh_error = self.cost_function_value(self.optim_results.x)
+        print('error:',self.hwh_error)
         time_end = time.time()
         print('>>>>>>>>>> optimization time used is:',time_end-time_start,'seconds')
         return self.X  # 拿到最后优化完之后的 Amp 参数
@@ -297,6 +300,7 @@ class AM_optimize():
                                         alpha_sci[1][seg_index * steps:(seg_index + 1) * steps])
                 self.axs[m, j].plot(alpha_sci[0][0], alpha_sci[1][0], 'g>', markersize=16)  # 画出起始点
                 self.axs[m, j].plot(alpha_sci[0][-1], alpha_sci[1][-1], 'rs')  # 画出终止点
+                self.axs[m, j].text(alpha_sci[0][-1], alpha_sci[1][-1]+0.001, str(alpha_sci[0][-1]+1.j*alpha_sci[1][-1]), ha='center', va= 'bottom',fontsize=9)
                 self.axs[m, j].title.set_text('mode:' + str(m) + ' ion:' + str(j))
         #   在 subplots 之外画出legends
         labels = ['seg '+str(seg) for seg in range(self.segments_number)]
@@ -313,6 +317,7 @@ class AM_optimize():
 
     def save_data(self):
         folder_path = "./calculation results/data/"
+        print(folder_path)
         #   保存 model_pulse_op_X 到npy文件
         np.save(folder_path + "optimized_X.npy", self.X)
         #   保存 train_loss_results 到npy文件

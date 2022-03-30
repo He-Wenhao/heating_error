@@ -267,6 +267,7 @@ class alg2(ideal):
 
 class brute():
     def __init__(self,para):
+        print('maybe problematic, details in optimized pulse of N=2')
         self.para = para
         self.amp0 =lambda t: self.para.amplitude[self.para.j_ions[0]](t)* np.sin(self.para.mu * t)
         self.amp1 = lambda t: self.para.amplitude[self.para.j_ions[1]](t)* np.sin(self.para.mu * t)
