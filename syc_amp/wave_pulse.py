@@ -44,7 +44,7 @@ class syc_amp(object):
     #   运行优化程序，得到 AM 设计波形的结果
     def func2_optimize_process_save_data(self, plotfig = False, pulse_symmetry = True, ions_same_amps = True):
         #   1. 开始optimization的过程
-        op = AM_optimize(self.detuning_list, self.gate_duration, self.segments_number, self.theta, self.eta, pulse_symmetry = pulse_symmetry, ions_same_amps = ions_same_amps)
+        op = AM_optimize(self.detuning_list, self.gate_duration, self.segments_number, self.theta, self.eta, pulse_symmetry = pulse_symmetry, ions_same_amps = ions_same_amps,if_restrict=True)
         op._optimizer_AM()
         self.error = op.hwh_error
         self.P = op.P

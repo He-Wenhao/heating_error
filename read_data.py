@@ -4,7 +4,7 @@ from my_constants import *
 import sympy as sp
 import matplotlib.pyplot as plt
 
-pathj01 = './results/j01/amp_opt_28.csv'
+
 
 class read_data():
     def __init__(self,path):
