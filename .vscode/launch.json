@@ -14,6 +14,7 @@
             "console": "integratedTerminal",
             "args": [],
             "justMycode":false,
+            "cwd": "${fileDirname}",
         },
         {
             "name": "not only my code Python: Current File",

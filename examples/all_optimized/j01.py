@@ -180,7 +180,7 @@ def optimize_amp_syc():
     #print('alg1:',alg1)
     #alg1 = sim_method_2L.brute(para).sim()
     #print('brute:',alg1)
-    evaluate = {2:10,3:18,4:20,5:20,6:24,7:32,8:36,9:36,10:38,11:48,12:52}
+    evaluate = {2:4,3:2,4:2,5:20,6:24,7:32,8:36,9:36,10:38,11:48,12:52}
     for N in range(2,14):
         segNum = evaluate[N]
         while 1:
@@ -293,8 +293,8 @@ def compute_my_bound_26():
 if __name__ == '__main__':
     
     #compute_infid_syc()
-    #optimize_amp_syc()
-    compute_my_bound_26()
+    optimize_amp_syc()
+    #compute_my_bound_26()
 
 
 

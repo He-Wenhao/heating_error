@@ -123,6 +123,7 @@ class syc_amp(object):
         j1 = self.j_list[1]
         print('segnum',self.segments_number,(np.real(self.optimized_X_import[j0]),np.real(self.optimized_X_import[j1]))) # Omega
         print('test theta',thetaproduct(self.G, self.optimized_X_import))
+        return (list(np.real(self.optimized_X_import[j0])), list(np.real(self.optimized_X_import[j1])))
 
 
     def get_amp(self):

@@ -270,6 +270,10 @@ class AM_optimize():
         #   计时结束
         self.hwh_error = self.cost_function_value(self.optim_results.x)
         print('error:',self.hwh_error)
+        constrain_error = self.constrains(self.optim_results.x)
+        print('constrain_error',constrain_error)
+        if constrain_error>1e-3:
+            raise ValueError('optimization failed,constraint cant be satisfied')
         time_end = time.time()
         print('>>>>>>>>>> optimization time used is:',time_end-time_start,'seconds')
         return self.X  # 拿到最后优化完之后的 Amp 参数
@@ -344,6 +348,8 @@ class AM_optimize():
         folder_path = "./calculation results/data/"
         print(folder_path)
         #   保存 model_pulse_op_X 到npy文件
+        if not os.path.exists(folder_path):
+            os.mkdir(folder_path)
         np.save(folder_path + "optimized_X.npy", self.X)
         #   保存 train_loss_results 到npy文件
         np.save(folder_path + "train_loss_results.npy", self.train_loss_results)
