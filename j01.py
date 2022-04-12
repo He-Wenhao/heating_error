@@ -241,7 +241,7 @@ def compute_my_bound_26():
 
         return para
 
-    for N_ions in range(12,13):
+    for N_ions in range(3,4):
         para = my_p(N_ions,['aH','a'])
         ###### for test
         #para.segNum = 2
