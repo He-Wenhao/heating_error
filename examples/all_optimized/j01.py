@@ -1,17 +1,21 @@
 import numpy as np
 import qutip
-import sim_method_2L
-from my_constants import *
-import trap_config
 import time
-from syc_amp.wave_pulse import syc_amp
-from zxm_freq.Tab1_ion_pos_spec_cal import  radial_mode_spectrum
-import read_data
 import scipy.integrate as integrate
 import sympy as sp
 from functools import lru_cache
 
-pathj01 = './results/j01/amp_opt_28.csv'
+import sys  #  import our package
+sys.path.append('../..')
+import sim_method_2L
+import read_data
+from my_constants import *
+import trap_config
+from syc_amp.wave_pulse import syc_amp
+from zxm_freq.Tab1_ion_pos_spec_cal import  radial_mode_spectrum
+
+print(sys.path)
+pathj01 = './cache/amp_opt_28.csv'
 
 
 def infidelity(a,b):
