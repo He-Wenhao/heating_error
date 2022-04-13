@@ -50,6 +50,7 @@ print(heating_error)
 plt.plot(N,[heating_error[n]/tau_lst[n] for n in N],label = 'numerical')
 
 
+
 N = list(my_bound_26.keys())
 N.sort()
 print(my_bound_26)
