@@ -61,6 +61,11 @@ def create_config():
         with open(new_prefix+'phonon.ini','w') as configfile:
             config.write(configfile)
 
+        # create file result.ini
+        config = configparser.ConfigParser()
+        with open(new_prefix+'result.ini','w') as configfile:
+            config.write(configfile)
+
 if __name__ == '__main__':
     create_config()
 
