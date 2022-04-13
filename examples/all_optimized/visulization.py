@@ -42,16 +42,16 @@ for folder in all_dir:
 
 
 plt.plot(list(range(2,13)),[2*n*1e2 for n in range(2,13)],label = 'N$\Gamma t$')
-try:
-    plt.plot(list(heating_error.keys()).sort(),[heating_error[n]/tau_lst[n] for n in list(heating_error.keys()).sort()],label = 'numerical result')
-except:
-    pass
+
+
+N = list(heating_error.keys())
+N.sort()
+print(heating_error)
+plt.plot(N,[heating_error[n]/tau_lst[n] for n in N],label = 'numerical')
 
 
 N = list(my_bound_26.keys())
 N.sort()
-print(tau_lst)
-print(N)
 print(my_bound_26)
 plt.plot(N,[my_bound_26[n]/tau_lst[n] for n in N],label = 'mybound_eq26')
 

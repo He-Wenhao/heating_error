@@ -103,7 +103,11 @@ def bound_eq26():
             print('---------------N =',N_ions,'my bound',result)
             config = configparser.ConfigParser()
             config.read(new_prefix+'result.ini')
+            if 'result' not in config.sections():
+                config['result'] = {}
             config['result']['bound_eq26'] = str(result)
+            with open(new_prefix+'result.ini','w') as configfile:
+                config.write(configfile)
 
 def num_heating_error():
     #iterate through all configurations
@@ -179,6 +183,8 @@ def num_heating_error():
         #save file
         config = configparser.ConfigParser()
         config.read(new_prefix+'result.ini')
+        if 'result' not in config.sections():
+            config['result'] = {}
         config['result']['infid'] = str(infid1[0])
         config['result']['tracedist'] = str(infid1[1])
 
@@ -192,6 +198,8 @@ def num_heating_error():
         print(infid_ideal)
         config['result']['infid_ideal'] = str(infid_ideal[0])
 
+        with open(new_prefix+'result.ini','w') as configfile:
+            config.write(configfile)
 
 if __name__ == '__main__':  
     num_heating_error()
