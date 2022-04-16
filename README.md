@@ -1,5 +1,5 @@
 # heating error
-this is the code for notes 
+this notes explain how sim_method_2L.py works
 https://www.overleaf.com/5296295776bttfbkqgwhmb
 
 # usage
