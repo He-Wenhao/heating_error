@@ -7,3 +7,11 @@ squeue -u `whoami`
 
 杀死排队
 scancel PID
+
+真正跑出正常结果的三个文件夹:
+
+all_optimized
+
+all_optimizedj1-1_modified
+
+all_optimizedjmm_mid_mu
