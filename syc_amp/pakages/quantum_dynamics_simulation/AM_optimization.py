@@ -19,9 +19,9 @@ import os
 
 #   seperate e^{i\delta_m*t} into cos\delta_m*t+i*sin\delta_m*t and then integrate seperately
 #   used for calculate the cost function
-def calculator_P(detuning_list, duration, number_of_segments, if_restrict = False):
+def calculator_P(detuning_list, duration, number_of_segments, if_restrict = False,restrictNum = None):
     k_list = [i for i in np.arange(len(detuning_list))]
-    res_c = 10
+    res_c = restrictNum
     if if_restrict == True and len(detuning_list) > res_c:
         print('hh')
         num = len(detuning_list)
@@ -144,10 +144,10 @@ def alpha_sciint(detuning, segment_amps, duration, eta, steps=100):
 
 
 class AM_optimize():
-    def __init__(self, detuning_list, gate_duration, segments_number, theta, eta, pulse_symmetry = True, ions_same_amps = True,if_restrict = False):
+    def __init__(self, detuning_list, gate_duration, segments_number, theta, eta, pulse_symmetry = True, ions_same_amps = True,if_restrict = False,restrictNum = None,amp_restrict = 0.5):
         # 计时开始
         time_start = time.time()
-        self.P = calculator_P(detuning_list, gate_duration, segments_number,if_restrict=if_restrict)  # define tensor P
+        self.P = calculator_P(detuning_list, gate_duration, segments_number,if_restrict=if_restrict,restrictNum=restrictNum)  # define tensor P
         self.G = calculator_G(detuning_list, gate_duration, segments_number, eta)  # define tensor G
         self.theta = tf.constant(theta, dtype=tf.dtypes.complex128)  # transfer the target interaction
         self.ions_on_index = self.theta_non_zero_index()     #   通过theta的值，看哪些离子上应该打光
@@ -164,6 +164,7 @@ class AM_optimize():
         self.segments_num_even = True if self.segments_number % 2 == 0 else False     # 判断segment数量为 奇数偶数
         self.X_init = self.X_initial(symmetry = self.pulse_symmetry, ions_same_amps = self.ions_same_amps)   # P的shape 为N个离子，每个离子 N_seg段参数
         self.X_zeros = np.array( [[0.0]*self.segments_number] * self.N_ions, dtype=float )
+        self.amp_restrict = amp_restrict
         #   计时结束
         time_end = time.time()
         print('>>>>>>>>>> P and G calculate time used is:',time_end-time_start,'seconds')
@@ -251,11 +252,11 @@ class AM_optimize():
 
 
     # 基于 scipy.optimize.minimize 的 优化算法，优化过程
-    def _optimizer_AM(self):
+    def _optimizer_AM(self,amp_restrict):
         self.start = np.ndarray.flatten(self.X_init) # 优化的参数，考虑每个离子的激光参数 不一样
         #   计时开始
         time_start = time.time()
-        bnd_value = 0.5
+        bnd_value = self.amp_restrict
         bnds = tuple([(-bnd_value, bnd_value) for index in range( len(self.start) )])
         from scipy.optimize import minimize
         #   1. 测试发现，如果用Nealder-Mead的方法，bounds太小就会出现问题。
