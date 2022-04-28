@@ -7,9 +7,9 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
+from scipy.linalg import null_space
 import time
-import os
-
+import sympy as sp
 # #   来限定只使用 CPU 进行运算。
 # cpus = tf.config.list_physical_devices(device_type='CPU')
 # tf.config.set_visible_devices(devices=cpus)
@@ -19,99 +19,100 @@ import os
 
 #   seperate e^{i\delta_m*t} into cos\delta_m*t+i*sin\delta_m*t and then integrate seperately
 #   used for calculate the cost function
-def calculator_P(detuning_list, duration, number_of_segments, if_restrict = False,restrictNum = None):
-    k_list = [i for i in np.arange(len(detuning_list))]
-    res_c = restrictNum
-    if if_restrict == True and len(detuning_list) > res_c:
-        print('hh')
-        num = len(detuning_list)
-        while num > res_c:
-            if num // 2 == 0:
-                k_list = k_list[1:]
-            else:
-                k_list = k_list[:-1]
-            num -= 1
-    print('k_list',k_list)
+def calculator_P(detuning_list, duration, number_of_segments):
     dur_seg = duration / number_of_segments  # duration of one segment
-
-    P_real = []
-    P_imag = []
-    for m in np.arange(len(detuning_list)):
-        if m in k_list:
-            P_real.append([0.5 * integrate.quad(lambda x: np.cos(detuning_list[m] * x), k * dur_seg, (k + 1) * dur_seg)[0] \
-               for k in np.arange(number_of_segments)])
-            P_imag.append([0.5 * integrate.quad(lambda x: np.sin(detuning_list[m] * x), k * dur_seg, (k + 1) * dur_seg)[0] \
-               for k in np.arange(number_of_segments)])
-        else:
-            P_real.append([0.]*number_of_segments)
-            P_imag.append([0.]*number_of_segments)
-
-    #P_real = [[0.5 * integrate.quad(lambda x: np.cos(detuning_list[m] * x), k * dur_seg, (k + 1) * dur_seg)[0] \
-               #for k in np.arange(number_of_segments)] for m in k_list]
-    #P_imag = [[0.5 * integrate.quad(lambda x: np.sin(detuning_list[m] * x), k * dur_seg, (k + 1) * dur_seg)[0] \
-               #for k in np.arange(number_of_segments)] for m in k_list]
+    P_real = [[0.5 * integrate.quad(lambda x: np.cos(detuning_list[m] * x), k * dur_seg, (k + 1) * dur_seg)[0] \
+               for k in np.arange(number_of_segments)] for m in np.arange(len(detuning_list))]
+    P_imag = [[0.5 * integrate.quad(lambda x: np.sin(detuning_list[m] * x), k * dur_seg, (k + 1) * dur_seg)[0] \
+               for k in np.arange(number_of_segments)] for m in np.arange(len(detuning_list))]
+    # 全部采用实数矩阵，将P分写为两部分（行数加倍）
+    P=[]
+    for p_r in P_real:
+        P.append(p_r)
+    for p_i in P_imag:
+        P.append(p_i)
+    return P
     # return np.array(P_real) + 1.0j * np.array(P_imag)
-    return tf.complex(np.array(P_real), np.array(P_imag))
+    # return tf.complex(np.array(P_real), np.array(P_imag))
+    # return tf.complex(np.array(P_imag), np.array([[0.0] * number_of_segments] * len(detuning_list)))
 
+# 这一积分与离子序号无关，对于不同离子对唯一的区别是不同的lamb-dicke系数来作为这些积分项的权重进行（对于声子态的）求和。指标顺序为k, l, m
+# 因此我们对积分项进行预处理，仅进行一遍积分操作，避免(n^2)次重复计算
+def pre_process_G_integral(detuning_list, duration, number_of_segments, eta):
+    dur_seg = duration / number_of_segments  # duration of one segment
+    G_int_terms_real=[]
+    G_int_terms_imag=[]
+    for k in np.arange(number_of_segments):
+        _G_mid_real=[]
+        _G_mid_imag=[]
+        # print(k)
+        for l in np.arange(k):
+            _G_mid_real.append([integrate.dblquad(lambda t1, t2: \
+                                   np.cos(detuning_list[m] * (t1 - t2)),
+                                   k * dur_seg, (k + 1) * dur_seg, \
+                                   lambda t1: l * dur_seg,
+                                   lambda t1: (l + 1) * dur_seg)[0] for m in np.arange(len(detuning_list))])
+            _G_mid_imag.append([integrate.dblquad(lambda t1, t2: \
+                                   np.sin(detuning_list[m] * (t1 - t2)),
+                                   k * dur_seg, (k + 1) * dur_seg, \
+                                   lambda t1: l * dur_seg,
+                                   lambda t1: (l + 1) * dur_seg)[0] for m in np.arange(len(detuning_list))])
+        _G_mid_real.append([integrate.dblquad(lambda t1, t2: \
+                                            np.cos(detuning_list[m] * (t1 - t2)),
+                                            k * dur_seg, (k + 1) * dur_seg, \
+                                            lambda t1: k * dur_seg,
+                                            lambda t1: t1)[0] for m in np.arange(len(detuning_list))])
+        _G_mid_imag.append([integrate.dblquad(lambda t1, t2: \
+                                            np.sin(detuning_list[m] * (t1 - t2)),
+                                            k * dur_seg, (k + 1) * dur_seg, \
+                                            lambda t1: k * dur_seg,
+                                            lambda t1: t1)[0] for m in np.arange(len(detuning_list))])
+        [_G_mid_real.append(0) for pad in np.arange(number_of_segments - k - 1)]
+        [_G_mid_imag.append(0) for pad in np.arange(number_of_segments - k - 1)]
+        G_int_terms_real.append(_G_mid_real)
+        G_int_terms_imag.append(_G_mid_imag)
+    return G_int_terms_real, G_int_terms_imag
+                          
 
-def calculator_G_ijspecified_real(detuning_list, duration, number_of_segments, eta, i, j):
+def calculator_G_ijspecified_real(G_int_terms_real, detuning_list, duration, number_of_segments, eta, i, j):
     dur_seg = duration / number_of_segments  # duration of one segment
     G_real = []
     for k in np.arange(number_of_segments):
         _middle_real = []
 
-        for l in np.arange(k):
-            middle = sum([0.25 * eta[m][i] * eta[m][j] * integrate.dblquad(lambda t1, t2: \
-                                                                               np.cos(detuning_list[m] * (t1 - t2)),
-                                                                           k * dur_seg, (k + 1) * dur_seg, \
-                                                                           lambda t1: l * dur_seg,
-                                                                           lambda t1: (l + 1) * dur_seg)[0] for m in
+        for l in np.arange(k+1):
+            middle = sum([0.25 * eta[m][i] * eta[m][j] * G_int_terms_real[k][l][m] for m in
                           np.arange(len(detuning_list))])
             _middle_real.append(middle)
-
-        _middle_real.append(sum([0.25 * eta[m][i] * eta[m][j] * integrate.dblquad(lambda t1, t2: \
-                                                                                      np.cos(
-                                                                                          detuning_list[m] * (t1 - t2)),
-                                                                                  k * dur_seg, (k + 1) * dur_seg, \
-                                                                                  lambda t1: k * dur_seg,
-                                                                                  lambda t1: t1)[0] for m in
-                                 np.arange(len(detuning_list))]))
+        
         [_middle_real.append(0) for pad in np.arange(number_of_segments - k - 1)]
         G_real.append(_middle_real)
     return G_real
 
-def calculator_G_ijspecified_imag(detuning_list, duration, number_of_segments, eta, i, j):
+def calculator_G_ijspecified_imag(G_int_terms_imag, detuning_list, duration, number_of_segments, eta, i, j):
     dur_seg = duration / number_of_segments  # duration of one segment
     G_imag = []
     for k in np.arange(number_of_segments):
         _middle_imag = []
 
-        for l in np.arange(k):
-            middle = sum([0.25 * eta[m][i] * eta[m][j] * integrate.dblquad(lambda t1, t2: \
-                                                                               np.sin(detuning_list[m] * (t1 - t2)),
-                                                                           k * dur_seg, (k + 1) * dur_seg, \
-                                                                           lambda t1: l * dur_seg,
-                                                                           lambda t1: (l + 1) * dur_seg)[0] for m in
+        for l in np.arange(k+1):
+            middle = sum([0.25 * eta[m][i] * eta[m][j] * G_int_terms_imag[k][l][m] for m in
                           np.arange(len(detuning_list))])
             _middle_imag.append(middle)
 
-        _middle_imag.append(sum([0.25 * eta[m][i] * eta[m][j] * integrate.dblquad(lambda t1, t2: \
-                                                                                      np.sin(
-                                                                                          detuning_list[m] * (t1 - t2)),
-                                                                                  k * dur_seg, (k + 1) * dur_seg, \
-                                                                                  lambda t1: k * dur_seg,
-                                                                                  lambda t1: t1)[0] for m in
-                                 np.arange(len(detuning_list))]))
         [_middle_imag.append(0) for pad in np.arange(number_of_segments - k - 1)]
         G_imag.append(_middle_imag)
     return G_imag
 
 def calculator_G(detuning_list, duration, number_of_segments, eta):
     spin_number = len(detuning_list)
+    
+    G_int_terms_real, G_int_terms_imag = pre_process_G_integral(detuning_list, duration, number_of_segments, eta)
 
-    G_real = [[calculator_G_ijspecified_real(detuning_list, duration, number_of_segments, eta, i, j) \
+    G_real = [[calculator_G_ijspecified_real(G_int_terms_real, detuning_list, duration, number_of_segments, eta, i, j) \
                for i in np.arange(spin_number)] for j in np.arange(spin_number)]
-    G_imag = [[calculator_G_ijspecified_imag(detuning_list, duration, number_of_segments, eta, i, j) \
+               #for [i,j] in
+    G_imag = [[calculator_G_ijspecified_imag(G_int_terms_imag, detuning_list, duration, number_of_segments, eta, i, j) \
                for i in np.arange(spin_number)] for j in np.arange(spin_number)]
     return tf.complex(np.array(G_real), np.array(G_imag))
 
@@ -144,10 +145,10 @@ def alpha_sciint(detuning, segment_amps, duration, eta, steps=100):
 
 
 class AM_optimize():
-    def __init__(self, detuning_list, gate_duration, segments_number, theta, eta, pulse_symmetry = True, ions_same_amps = True,if_restrict = False,restrictNum = None,amp_restrict = 0.5):
+    def __init__(self, detuning_list, gate_duration, segments_number, theta, eta, pulse_symmetry = True, ions_same_amps = True):
         # 计时开始
         time_start = time.time()
-        self.P = calculator_P(detuning_list, gate_duration, segments_number,if_restrict=if_restrict,restrictNum=restrictNum)  # define tensor P
+        self.P = calculator_P(detuning_list, gate_duration, segments_number)  # define tensor P
         self.G = calculator_G(detuning_list, gate_duration, segments_number, eta)  # define tensor G
         self.theta = tf.constant(theta, dtype=tf.dtypes.complex128)  # transfer the target interaction
         self.ions_on_index = self.theta_non_zero_index()     #   通过theta的值，看哪些离子上应该打光
@@ -164,10 +165,11 @@ class AM_optimize():
         self.segments_num_even = True if self.segments_number % 2 == 0 else False     # 判断segment数量为 奇数偶数
         self.X_init = self.X_initial(symmetry = self.pulse_symmetry, ions_same_amps = self.ions_same_amps)   # P的shape 为N个离子，每个离子 N_seg段参数
         self.X_zeros = np.array( [[0.0]*self.segments_number] * self.N_ions, dtype=float )
-        self.amp_restrict = amp_restrict
         #   计时结束
         time_end = time.time()
         print('>>>>>>>>>> P and G calculate time used is:',time_end-time_start,'seconds')
+        #print('P = ',self.P)
+        #print('G = ',self.G)
 
     def theta_non_zero_index(self):
         theta_tri_up = np.triu( self.theta,1 )      #   将矩阵转成上三角，考虑到耦合的对称性
@@ -252,29 +254,69 @@ class AM_optimize():
 
 
     # 基于 scipy.optimize.minimize 的 优化算法，优化过程
-    def _optimizer_AM(self,amp_restrict):
-        self.start = np.ndarray.flatten(self.X_init) # 优化的参数，考虑每个离子的激光参数 不一样
+    def _optimizer_AM(self):
+        # self.start = np.ndarray.flatten(self.X_init) # 优化的参数，考虑每个离子的激光参数 不一样
         #   计时开始
         time_start = time.time()
-        bnd_value = self.amp_restrict
-        bnds = tuple([(-bnd_value, bnd_value) for index in range( len(self.start) )])
-        from scipy.optimize import minimize
+        bnd_value = 0.5
+        #bnds = tuple([(-bnd_value, bnd_value) for index in range( len(self.start) )])
+        
+        if(self.entangled_ions_num != 2):
+            print("This method applies to two-qubit entanglement only. Please try other optimizations.")
+            return
+        
+        # 使用linalg.nullspace()函数求解null空间的基矢并进行后续的矩阵运算
+        G_triang = sp.Matrix(np.imag(self.G[self.ions_on_index[0]][self.ions_on_index[1]]))
+        G_symm = (G_triang + G_triang.transpose())/2
+        P_mat = sp.Matrix(self.P)
+        
+        # 假定在两离子上打相同波形的激光
+        
+        Null_space = P_mat.nullspace()
+        Null_space = sp.GramSchmidt(Null_space)# 正交化
+        Null_vecs = []
+        for nv in Null_space:
+            _norm_nv=nv/nv.norm()  # 归一化
+            Null_vecs.append(_norm_nv.transpose().tolist()[0]) #将Null_space中每个基矢以list形式存下来
+        
+        # 计算约化矩阵V，其等价于将G投影到P的null空间上，新的基矢为Null_vec
+        V_reducedG = []
+        for k in np.arange(len(Null_vecs)):
+            _row = []
+            _mid = sp.Matrix(Null_vecs[k]).transpose()*G_symm
+            for l in np.arange(len(Null_vecs)):
+                _row.append( (_mid * sp.Matrix(Null_vecs[l]))[0] )
+            V_reducedG.append(_row)
+        #print(V_reducedG)
+        # 计算V的本征值并求出所需最小功率的激光波形
+        V_eigenvects=sp.Matrix(V_reducedG).eigenvects()
+        Eigvals = [ev[0] for ev in V_eigenvects]
+        Abs_eigvals = np.abs(Eigvals)
+        Eigvects = [ev[2][0].transpose().tolist()[0] for ev in V_eigenvects]
+        max_eig_abs = np.max(Abs_eigvals)
+        _ind = Abs_eigvals.tolist().index(max_eig_abs)
+        Pulse_eigenvect = Eigvects[_ind]
+        
+        Pulse_shape = np.zeros(len(Null_vecs[0]))
+        for k in np.arange(len(Null_vecs)):
+            Pulse_shape = Pulse_shape + Pulse_eigenvect[k]*np.array(Null_vecs[k])
+        Pulse_shape = np.sqrt(np.double(self.theta[self.ions_on_index[0],self.ions_on_index[1]].numpy()/max_eig_abs))*Pulse_shape
+            
+        self.X = np.array( [[0.0]*self.segments_number] * self.N_ions, dtype=float )
+        self.X[self.ions_on_index[0]] = Pulse_shape
+        self.X[self.ions_on_index[1]] = Pulse_shape
+        
+        #from scipy.optimize import minimize
         #   1. 测试发现，如果用Nealder-Mead的方法，bounds太小就会出现问题。
         # self.optim_results = minimize(self.cost_function_value, self.start, method='Nelder-Mead', bounds=bnds, tol=1e-18)
         # #   2. 测试发现，使用SLSQP，对于segment增加，结果依然正确
         # self.optim_results = minimize(self.cost_function_value, self.start, method='SLSQP', bounds=bnds, tol=1e-18)
         #   3. 采用SLSQP的方法，外加 constrain 对 theta 进行约束
-        self.optim_results = minimize( self.cost_function_value, self.start, method='SLSQP', bounds=bnds, constraints= {'type':'eq','fun':self.constrains,'ftol':1e-8,'maxiter': 300} )
+        #self.optim_results = minimize( self.cost_function_value, self.start, method='SLSQP', bounds=bnds, constraints= {'type':'eq','fun':self.constrains}, tol=1e-18 )
         # #   4. 寻找 global minimum
         # from scipy.optimize import basinhopping
         # self.optim_results = basinhopping( self.cost_function_value, self.start )
         #   计时结束
-        self.hwh_error = self.cost_function_value(self.optim_results.x)
-        print('error:',self.hwh_error)
-        constrain_error = self.constrains(self.optim_results.x)
-        print('constrain_error',constrain_error)
-        if constrain_error>1e-3:
-            raise ValueError('optimization failed,constraint cant be satisfied')
         time_end = time.time()
         print('>>>>>>>>>> optimization time used is:',time_end-time_start,'seconds')
         return self.X  # 拿到最后优化完之后的 Amp 参数
@@ -318,6 +360,11 @@ class AM_optimize():
 
     #   画出相空间的轨迹图，N*N个图，alpha_j^m
     def trajectory_plot(self, steps):  # 画出来相空间轨迹，alpha
+        # 不再作trajectory_alpha_calculate的调用，因此在这一函数里补充定义
+        self.mode_number=self.N_ions
+        #self.final_result = tf.constant(np.reshape(self.X, self.P.shape), tf.dtypes.complex128)
+        self.final_result = tf.constant(self.X)
+        
         self.fig, self.axs = plt.subplots(self.mode_number, self.mode_number, constrained_layout=False)
         self.fig.set_size_inches(8, 8)
         for m in np.arange(self.mode_number):
@@ -330,7 +377,6 @@ class AM_optimize():
                                         alpha_sci[1][seg_index * steps:(seg_index + 1) * steps])
                 self.axs[m, j].plot(alpha_sci[0][0], alpha_sci[1][0], 'g>', markersize=16)  # 画出起始点
                 self.axs[m, j].plot(alpha_sci[0][-1], alpha_sci[1][-1], 'rs')  # 画出终止点
-                self.axs[m, j].text(alpha_sci[0][-1], alpha_sci[1][-1]+0.001, str(alpha_sci[0][-1]+1.j*alpha_sci[1][-1]), ha='center', va= 'bottom',fontsize=9)
                 self.axs[m, j].title.set_text('mode:' + str(m) + ' ion:' + str(j))
         #   在 subplots 之外画出legends
         labels = ['seg '+str(seg) for seg in range(self.segments_number)]
@@ -346,18 +392,16 @@ class AM_optimize():
         plt.show()
 
     def save_data(self):
-        folder_path = "./calculation results/data/"
-        print(folder_path)
+        folder_path = "./algebraic_results/"
+        # folder_path = "new_calculation_results\\" # 考虑chi中的正弦函数进行优化的结果
         #   保存 model_pulse_op_X 到npy文件
-        if not os.path.exists(folder_path):
-            os.mkdir(folder_path)
         np.save(folder_path + "optimized_X.npy", self.X)
         #   保存 train_loss_results 到npy文件
-        np.save(folder_path + "train_loss_results.npy", self.train_loss_results)
+        #np.save(folder_path + "train_loss_results.npy", self.train_loss_results)
         #   保存 Jij_coupling_op_process 到npy文件
-        np.save(folder_path + "Jij_coupling_op_process.npy", self.Jij_coupling_op_process)
+        #np.save(folder_path + "Jij_coupling_op_process.npy", self.Jij_coupling_op_process)
         #   保存 alpha_modes_simu_max_trunc 到npy文件
-        np.save(folder_path + "alpha_modes_simu_max_trunc.npy", self.alpha_modes_simu_max_trunc)
+        # np.save(folder_path + "alpha_modes_simu_max_trunc.npy", self.alpha_modes_simu_max_trunc)
 
     def print_res(self):
         theta_target = self.theta

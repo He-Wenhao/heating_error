@@ -2,7 +2,7 @@
 in all_optimized settings, we set basic parameters as following, and iterate N from 2 to 12
 '''
 trap_type = 'Paul linear trap'
-N_ions_list = [2,3,4]
+N_ions_list = [10,11,12]
 omega_ax = '0.32*2*np.pi*MHz'
 omega_ra = '2.18*2*np.pi*MHz'
 heating_rate = 1e2

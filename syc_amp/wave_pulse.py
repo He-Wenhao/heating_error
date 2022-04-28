@@ -44,14 +44,13 @@ class syc_amp(object):
     #   运行优化程序，得到 AM 设计波形的结果
     def func2_optimize_process_save_data(self, plotfig = False, pulse_symmetry = True, ions_same_amps = True,if_restrict = False,restrictNum = None,amp_restrict = 0.5):
         #   1. 开始optimization的过程
-        op = AM_optimize(self.detuning_list, self.gate_duration, self.segments_number, self.theta, self.eta, pulse_symmetry = pulse_symmetry, ions_same_amps = ions_same_amps,if_restrict=if_restrict,restrictNum = restrictNum,amp_restrict = amp_restrict)
-        op._optimizer_AM(amp_restrict = amp_restrict)
-        self.error = op.hwh_error
+        op = AM_optimize(self.detuning_list, self.gate_duration, self.segments_number, self.theta, self.eta, pulse_symmetry = pulse_symmetry, ions_same_amps = ions_same_amps)
+        op._optimizer_AM()
         self.P = op.P
         self.G = op.G
         #   计算相空间中alpha的值
-        steps = 500
-        op.trajectory_alpha_calculate(steps)
+        #steps = 500
+        #op.trajectory_alpha_calculate(steps)
 
         if plotfig == True:
             # 2. 以下为画图
@@ -110,7 +109,7 @@ class syc_amp(object):
 
 
     def import_amp(self):
-        folder_path = "./calculation results/data/"
+        folder_path = "./algebraic_results/"
         self.optimized_X_import = np.load(folder_path + "optimized_X.npy")
 
     def print_amp(self):
@@ -122,8 +121,11 @@ class syc_amp(object):
         j0 = self.j_list[0]
         j1 = self.j_list[1]
         print('segnum',self.segments_number,(np.real(self.optimized_X_import[j0]),np.real(self.optimized_X_import[j1]))) # Omega
-        print('test theta',thetaproduct(self.G, self.optimized_X_import))
-        return (list(np.real(self.optimized_X_import[j0])), list(np.real(self.optimized_X_import[j1])))
+        #print('test theta',thetaproduct(self.G, self.optimized_X_import))
+        result = (list(np.real(self.optimized_X_import[j0])), list(np.real(self.optimized_X_import[j1])))
+        max_amp = max(result[0]+result[1])
+        min_amp = min(result[0]+result[1])
+        return result[0], result[1], max(abs(max_amp),abs(min_amp))
 
 
     def get_amp(self):
@@ -151,6 +153,7 @@ class syc_amp(object):
         ###########################
         #print('test intgrate 2',tf.tensordot(self.P, self.optimized_X_import, [[1], [1]]))
         return res
+
 
 
 

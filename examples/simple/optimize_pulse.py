@@ -29,7 +29,7 @@ def optimize_pulse():
         config = configparser.ConfigParser()
         config.read(new_prefix+'phonon.ini')
         Z_freqcal  = eval(config['phonon']['Z_freqcal'])
-        print(config['phonon']['Z_modes'])
+        #print(config['phonon']['Z_modes'])
         Z_modes = eval(config['phonon']['Z_modes'])
 
         # set some laser parameters
@@ -52,23 +52,24 @@ def optimize_pulse():
             #error = p(N,segNum)
             #in syc_amp MHz = us = 1
             syc = syc_amp(ion_number=N_ions,j_list=j_ions,omega=[(x - mu)/MHz for x in Z_freqcal],bij=np.matrix(Z_modes).transpose(),tau=delta_t*segNum/us,segment_num=segNum,lamb_dicke=lamb_dicke,mu = mu/MHz)
-            try:
-                syc.func2_optimize_process_save_data(plotfig=False, pulse_symmetry = False, ions_same_amps = True)
-            except:
-                segNum += 1
-                continue
+            
+            syc.func2_optimize_process_save_data(plotfig=False, pulse_symmetry = False, ions_same_amps = True)
+
 
             syc.import_amp()
-            ampList0,ampList1 = syc.print_amp()
-            if syc.error < 1e-4:
+            ampList0,ampList1, max_amp = syc.print_amp()
+            print('max_amp',max_amp)
+            if max_amp < 1:
                 print('----- break -----')
                 config['amplitude']['segNum'] = str(segNum)
                 config['amplitude']['amp_list0'] = str(ampList0)
                 config['amplitude']['amp_list1'] = str(ampList1)
                 with open(new_prefix+'laser.ini','w') as configfile:
                     config.write(configfile)
-                
-                evaluate[N_ions+1] = max(segNum,evaluate[N_ions+1])
+                if N_ions + 1 in initial_guess.keys():
+                    initial_guess[N_ions+1] = max(segNum,initial_guess[N_ions+1])
+                else:
+                    initial_guess[N_ions+1] = segNum
                 
                 break
             else:
