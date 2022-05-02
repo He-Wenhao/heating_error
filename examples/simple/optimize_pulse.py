@@ -14,7 +14,8 @@ all_dir.sort(key=lambda x:int(re.sub(u"([^\u0030-\u0039])", "", x)))
 segNumdict = {}
 
 #initial_guess = {2:2,3:18,4:20,5:20,6:24,7:32,8:36,9:36,10:38,11:48,12:52}
-initial_guess = {2:10,3:15,4:17,5:18,6:22,7:24,8:29,9:32,10:36}
+initial_guess = {2:5}
+
 def optimize_pulse():
     #iterate through all configurations
     for folder in all_dir:
@@ -67,9 +68,9 @@ def optimize_pulse():
                 with open(new_prefix+'laser.ini','w') as configfile:
                     config.write(configfile)
                 if N_ions + 1 in initial_guess.keys():
-                    initial_guess[N_ions+1] = max(segNum,initial_guess[N_ions+1])
+                    initial_guess[N_ions+1] = max(segNum,2*(N_ions+1)+2)
                 else:
-                    initial_guess[N_ions+1] = segNum
+                    initial_guess[N_ions+1] = 2*(N_ions+1)+2
                 
                 break
             else:
